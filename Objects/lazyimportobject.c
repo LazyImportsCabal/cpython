@@ -6,6 +6,7 @@
 #include "pycore_import.h"
 #include "pycore_interpframe.h"
 #include "pycore_lazyimportobject.h"
+#include "pycore_modsupport.h"
 
 #define PyLazyImportObject_CAST(op) ((PyLazyImportObject *)(op))
 
@@ -107,18 +108,22 @@ lazy_import_repr(PyObject *op)
 static PyObject *
 lazy_import_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (PyTuple_GET_SIZE(args) != 2 && PyTuple_GET_SIZE(args) != 3) {
-        PyErr_SetString(PyExc_ValueError, "lazy_import expected 2-3 arguments");
+    PyTypeObject *base_tp = &PyLazyImport_Type;
+    if (
+        (type == base_tp || type->tp_init == base_tp->tp_init)
+        && !_PyArg_NoKeywords("lazy_import", kwds)
+    ) {
+        return NULL;
+    }
+
+    Py_ssize_t nargs = PyTuple_GET_SIZE(args);
+    if (!_PyArg_CheckPositional("lazy_import", nargs, 2, 3)) {
         return NULL;
     }
 
     PyObject *builtins = PyTuple_GET_ITEM(args, 0);
     PyObject *from = PyTuple_GET_ITEM(args, 1);
-    PyObject *attr = NULL;
-    if (PyTuple_GET_SIZE(args) == 3) {
-        attr = PyTuple_GET_ITEM(args, 2);
-    }
-
+    PyObject *attr = nargs == 3 ? PyTuple_GET_ITEM(args, 2) : NULL;
     return _PyLazyImport_New(builtins, from, attr);
 }
 
