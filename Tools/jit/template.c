@@ -15,6 +15,7 @@
 #include "pycore_interpframe.h"
 #include "pycore_interpolation.h"
 #include "pycore_intrinsics.h"
+#include "pycore_lazyimportobject.h"
 #include "pycore_jit.h"
 #include "pycore_list.h"
 #include "pycore_long.h"
