@@ -1,12 +1,11 @@
 """Tests for PEP 810 lazy imports."""
 
 import sys
+import subprocess
+import textwrap
+import threading
 import types
 import unittest
-import threading
-import textwrap
-import subprocess
-from test.support import import_helper
 
 
 class LazyImportTests(unittest.TestCase):
