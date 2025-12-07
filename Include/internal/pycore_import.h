@@ -36,8 +36,7 @@ extern PyObject *
 _PyImport_ResolveName(PyThreadState *tstate, PyObject *name, PyObject *globals, int level);
 extern PyObject *
 _PyImport_GetAbsName(PyThreadState *tstate, PyObject *name, PyObject *globals, int level);
-// Symbol is exported for the JIT
-PyAPI_FUNC(PyObject *)
+extern PyObject *
 _PyImport_LoadLazyImportTstate(PyThreadState *tstate, PyObject *lazy_import);
 extern PyObject *
 _PyImport_LazyImportModuleLevelObject(PyThreadState *tstate, PyObject *name, PyObject *builtins, PyObject *globals,
