@@ -125,14 +125,17 @@ _PyLazyImport_GetName(PyObject *lazy_import)
 }
 
 static PyObject *
-lazy_resolve(PyObject *self, PyObject *args)
+lazy_import_resolve(PyObject *self, PyObject *args)
 {
     return _PyImport_LoadLazyImportTstate(PyThreadState_GET(), self);
 }
 
-static PyMethodDef lazy_methods[] = {
-    {"resolve", lazy_resolve, METH_NOARGS, PyDoc_STR("resolves the lazy import and returns the actual object")},
-    {0}
+static PyMethodDef lazy_import_methods[] = {
+    {
+        "resolve", lazy_import_resolve, METH_NOARGS,
+        PyDoc_STR("resolves the lazy import and returns the actual object")
+    },
+    {NULL, NULL}
 };
 
 
@@ -147,43 +150,16 @@ PyDoc_STRVAR(lazy_import_doc,
 
 PyTypeObject PyLazyImport_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    "lazy_import",                              /* tp_name */
-    sizeof(PyLazyImportObject),                 /* tp_basicsize */
-    0,                                          /* tp_itemsize */
-    (destructor)lazy_import_dealloc,            /* tp_dealloc */
-    0,                                          /* tp_print */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_reserved */
-    (reprfunc)lazy_import_repr,                 /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    0,                                          /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-        Py_TPFLAGS_BASETYPE,                    /* tp_flags */
-    lazy_import_doc,                            /* tp_doc */
-    (traverseproc)lazy_import_traverse,         /* tp_traverse */
-    (inquiry)lazy_import_clear,                 /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    0,                                          /* tp_iter */
-    0,                                          /* tp_iternext */
-    lazy_methods,                               /* tp_methods */
-    0,                                          /* tp_members */
-    0,                                          /* tp_getset */
-    0,                                          /* tp_base */
-    0,                                          /* tp_dict */
-    0,                                          /* tp_descr_get */
-    0,                                          /* tp_descr_set */
-    0,                                          /* tp_dictoffset */
-    0,                                          /* tp_init */
-    PyType_GenericAlloc,                        /* tp_alloc */
-    lazy_import_new,                            /* tp_new */
-    PyObject_GC_Del,                            /* tp_free */
+    .tp_name = "lazy_import",
+    .tp_basicsize = sizeof(PyLazyImportObject),
+    .tp_dealloc = (destructor)lazy_import_dealloc,
+    .tp_repr = lazy_import_repr,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
+    .tp_doc = lazy_import_doc,
+    .tp_traverse = (traverseproc)lazy_import_traverse,
+    .tp_clear = (inquiry)lazy_import_clear,
+    .tp_methods = lazy_import_methods,
+    .tp_alloc = PyType_GenericAlloc,
+    .tp_new = lazy_import_new,
+    .tp_free = PyObject_GC_Del,
 };
