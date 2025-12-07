@@ -1,11 +1,11 @@
 /* Lazy object implementation */
 
 #include "Python.h"
-#include "pycore_import.h"
-#include "pycore_lazyimportobject.h"
-#include "pycore_frame.h"
 #include "pycore_ceval.h"
+#include "pycore_frame.h"
+#include "pycore_import.h"
 #include "pycore_interpframe.h"
+#include "pycore_lazyimportobject.h"
 
 PyObject *
 _PyLazyImport_New(PyObject *builtins, PyObject *from, PyObject *attr)
