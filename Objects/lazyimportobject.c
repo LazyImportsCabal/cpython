@@ -7,6 +7,8 @@
 #include "pycore_interpframe.h"
 #include "pycore_lazyimportobject.h"
 
+#define PyLazyImportObject_CAST(op) ((PyLazyImportObject *)(op))
+
 PyObject *
 _PyLazyImport_New(PyObject *builtins, PyObject *from, PyObject *attr)
 {
@@ -46,8 +48,9 @@ _PyLazyImport_New(PyObject *builtins, PyObject *from, PyObject *attr)
 }
 
 static int
-lazy_import_traverse(PyLazyImportObject *m, visitproc visit, void *arg)
+lazy_import_traverse(PyObject *op, visitproc visit, void *arg)
 {
+    PyLazyImportObject *m = PyLazyImportObject_CAST(op);
     Py_VISIT(m->lz_builtins);
     Py_VISIT(m->lz_from);
     Py_VISIT(m->lz_attr);
@@ -56,8 +59,9 @@ lazy_import_traverse(PyLazyImportObject *m, visitproc visit, void *arg)
 }
 
 static int
-lazy_import_clear(PyLazyImportObject *m)
+lazy_import_clear(PyObject *op)
 {
+    PyLazyImportObject *m = PyLazyImportObject_CAST(op);
     Py_CLEAR(m->lz_builtins);
     Py_CLEAR(m->lz_from);
     Py_CLEAR(m->lz_attr);
@@ -66,11 +70,11 @@ lazy_import_clear(PyLazyImportObject *m)
 }
 
 static void
-lazy_import_dealloc(PyLazyImportObject *m)
+lazy_import_dealloc(PyObject *op)
 {
-    _PyObject_GC_UNTRACK(m);
-    lazy_import_clear(m);
-    Py_TYPE(m)->tp_free((PyObject *)m);
+    _PyObject_GC_UNTRACK(op);
+    (void)lazy_import_clear(op);
+    Py_TYPE(op)->tp_free(op);
 }
 
 static PyObject *
@@ -79,22 +83,23 @@ lazy_import_name(PyLazyImportObject *m)
     if (m->lz_attr != NULL) {
         if (PyUnicode_Check(m->lz_attr)) {
             return PyUnicode_FromFormat("%U.%U", m->lz_from, m->lz_attr);
-        } else {
+        }
+        else {
             return PyUnicode_FromFormat("%U...", m->lz_from);
         }
     }
-    Py_INCREF(m->lz_from);
-    return m->lz_from;
+    return Py_NewRef(m->lz_from);
 }
 
 static PyObject *
-lazy_import_repr(PyLazyImportObject *m)
+lazy_import_repr(PyObject *op)
 {
+    PyLazyImportObject *m = PyLazyImportObject_CAST(op);
     PyObject *name = lazy_import_name(m);
     if (name == NULL) {
         return NULL;
     }
-    PyObject *res = PyUnicode_FromFormat("<lazy_import '%U'>", name);
+    PyObject *res = PyUnicode_FromFormat("<%T '%U'>", op, name);
     Py_DECREF(name);
     return res;
 }
@@ -118,10 +123,11 @@ lazy_import_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 PyObject *
-_PyLazyImport_GetName(PyObject *lazy_import)
+_PyLazyImport_GetName(PyObject *op)
 {
+    PyLazyImportObject *lazy_import = PyLazyImportObject_CAST(op);
     assert(PyLazyImport_CheckExact(lazy_import));
-    return lazy_import_name((PyLazyImportObject *)lazy_import);
+    return lazy_import_name(lazy_import);
 }
 
 static PyObject *
@@ -152,12 +158,12 @@ PyTypeObject PyLazyImport_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     .tp_name = "lazy_import",
     .tp_basicsize = sizeof(PyLazyImportObject),
-    .tp_dealloc = (destructor)lazy_import_dealloc,
+    .tp_dealloc = lazy_import_dealloc,
     .tp_repr = lazy_import_repr,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
     .tp_doc = lazy_import_doc,
-    .tp_traverse = (traverseproc)lazy_import_traverse,
-    .tp_clear = (inquiry)lazy_import_clear,
+    .tp_traverse = lazy_import_traverse,
+    .tp_clear = lazy_import_clear,
     .tp_methods = lazy_import_methods,
     .tp_alloc = PyType_GenericAlloc,
     .tp_new = lazy_import_new,
