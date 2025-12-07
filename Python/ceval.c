@@ -3749,7 +3749,7 @@ PyObject *
 _PyEval_LazyImportFrom(PyThreadState *tstate, PyObject *v, PyObject *name)
 {
     assert(PyLazyImport_CheckExact(v));
-    assert(name)
+    assert(name);
     assert(PyUnicode_Check(name));
     PyObject *ret;
     PyLazyImportObject *d = (PyLazyImportObject *)v;
