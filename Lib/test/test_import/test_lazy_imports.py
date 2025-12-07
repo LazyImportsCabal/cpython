@@ -1,12 +1,11 @@
 """Tests for PEP 810 lazy imports."""
 
 import sys
+import subprocess
+import textwrap
+import threading
 import types
 import unittest
-import threading
-import textwrap
-import subprocess
-from test.support import import_helper
 
 
 class LazyImportTests(unittest.TestCase):
@@ -187,7 +186,7 @@ class LazyImportTypeTests(unittest.TestCase):
 
     def test_lazy_import_type_exposed(self):
         """LazyImportType should be exposed in types module."""
-        self.assertTrue(hasattr(types, 'LazyImportType'))
+        self.assertHasAttr(types, 'LazyImportType')
         self.assertEqual(types.LazyImportType.__name__, 'lazy_import')
 
 
