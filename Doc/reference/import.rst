@@ -930,6 +930,181 @@ and ``__main__.__spec__`` is set accordingly, they're still considered
 ``if __name__ == "__main__":`` checks only execute when the module is used
 to populate the ``__main__`` namespace, and not during normal import.
 
+.. _lazy-imports:
+
+Lazy imports
+============
+
+.. versionadded:: 3.15
+   Lazy imports were added as an opt-in language feature.
+
+Python can defer importing a module until the imported name is first used.  This
+can significantly reduce startup time and memory usage for programs that have
+large dependency graphs (for example command-line applications, test runners,
+and frameworks with many optional subsystems).
+
+Lazy imports are *local* and *explicit*: they apply only to the individual
+import statement that is marked as potentially lazy, and do not change the
+import behaviour of other modules.
+
+Conceptually, a lazy import splits the usual work of importing into two phases:
+
+* *Binding time* (at the import statement): bind the imported name to a *lazy
+  proxy* object.
+* *Reification time* (at first use): resolve the proxy by performing a normal
+  import and then replacing the proxy with the real object.
+
+After successful reification, the binding is indistinguishable from one created
+by an eager import.
+
+The ``lazy`` soft keyword
+-------------------------
+
+A new soft keyword, :keyword:`lazy`, may be used at module scope before
+:keyword:`import` statements::
+
+   lazy import json
+   lazy from json import dumps, loads
+
+The keyword is only permitted where lazy imports can be supported safely.  In
+particular, lazy imports are not permitted in function or class bodies, in
+``try`` blocks, or with wildcard imports (``from ... import *``).
+
+.. note::
+
+   A lazy import changes *when* import-time side effects and import-time errors
+   occur.  Errors (such as :exc:`ImportError`) and module-level side effects now
+   happen when the imported name is first used, rather than at the import
+   statement.
+
+The module cache and lazy imports
+---------------------------------
+
+A module imported lazily does not appear in :data:`sys.modules` until it is
+reified.  Prior to reification, the module name may be recorded for diagnostics
+in :data:`sys.lazy_modules` (see below).
+
+When the lazy proxy is reified, the import is performed using the current state
+of the import system (for example :data:`sys.path`, :data:`sys.meta_path`, and
+any installed import hooks) and the resulting module is inserted into
+:data:`sys.modules` in the same way as for an eager import.
+
+.. _lazy-import-proxies:
+
+Lazy proxies
+------------
+
+Lazy imports bind names to proxy objects until reification.  Proxy objects are
+instances of ``types.LazyImportType`` and may be resolved explicitly by calling
+their ``resolve()`` method.
+
+.. impl-detail::
+
+   The exact proxy type name and its introspection behaviour are CPython
+   implementation details, though CPython guarantees that once a proxy is
+   successfully reified, the binding is replaced with the real object.
+
+.. _lazy-imports-compat:
+
+Per-module compatibility hook: ``__lazy_modules__``
+---------------------------------------------------
+
+A module may define a global name ``__lazy_modules__``.  When present, CPython
+consults it when executing eligible *module-level* import statements in that
+module.  If the imported module name is contained in ``__lazy_modules__``, the
+import becomes *potentially lazy* (as if it were written using the ``lazy``
+keyword).
+
+This provides a migration path for code that must run on Python versions that
+do not recognize the ``lazy`` syntax.  On versions that do not implement lazy
+imports, ``__lazy_modules__`` is ignored and imports remain eager.
+
+``__lazy_modules__`` is looked up in the importing module's global namespace at
+the time the import statement executes.  The object is treated as a container;
+CPython calls::
+
+   __lazy_modules__.__contains__(fullname: str) -> bool
+
+*fullname* is the fully qualified module name from the import statement (for
+example ``"json"`` or ``"pkg.sub"``).  The recommended type is a ``set[str]``
+(or ``frozenset[str]``).
+
+.. note::
+
+   ``__lazy_modules__`` only affects import statements executed in the module
+   that defines it.  It does not recursively make imports inside other modules
+   lazy.
+
+Example::
+
+   # my_tool.py
+   import sys
+
+   __lazy_modules__ = {"json"}
+
+   import json
+   assert "json" not in sys.modules
+
+   print(json.dumps({"hello": "world"}))  # triggers reification
+   assert "json" in sys.modules
+
+.. _lazy-import-entrypoint:
+
+Internal entry point: ``__lazy_import__``
+-----------------------------------------
+
+When an eligible import statement is actually performed lazily, CPython calls
+``__lazy_import__`` instead of :func:`__import__`.  ``__lazy_import__`` has the
+same signature as :func:`__import__`::
+
+   __lazy_import__(name, globals=None, locals=None, fromlist=(), level=0)
+
+It always returns a lazy proxy object (typically ``types.LazyImportType``) and
+does not load the module.  The module is imported when the proxy is reified.
+
+.. impl-detail::
+
+   ``__lazy_import__`` is a CPython implementation detail and is not intended
+   for general use.
+
+.. _lazy-imports-sys:
+
+Diagnostics and control
+-----------------------
+
+CPython records lazily imported module names for diagnostics in
+:data:`sys.lazy_modules` (a set of fully qualified module names).  Modules in
+this set have had a lazy proxy created for them at some point; they are not
+necessarily imported yet.
+
+The lazy import mechanism may also be configured globally, primarily for
+applications and testing:
+
+* :func:`sys.set_lazy_imports` controls the global lazy-imports mode.
+* :func:`sys.set_lazy_imports_filter` installs a filter function that can force
+  potentially lazy imports to be imported eagerly.
+
+.. warning::
+
+   Enabling laziness broadly may change the timing of import-time side effects
+   and errors, and may uncover code that relies on import order or implicit
+   registration at import time.
+
+Interaction with the import machinery
+-------------------------------------
+
+Lazy import reification uses the standard import machinery.  In particular:
+
+* Import hooks on :data:`sys.meta_path` and :data:`sys.path_hooks` are consulted
+  at reification time.
+* The module is inserted into :data:`sys.modules` as part of the normal loading
+  process.
+* Reification is protected by the standard import lock.
+
+Because the import system state is consulted when the proxy is reified, changes
+to import hooks or :data:`sys.path` between the lazy import statement and first
+use may affect what gets imported.
+
 
 References
 ==========
