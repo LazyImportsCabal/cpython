@@ -77,7 +77,7 @@ except ImportError:
     # so there is no fallback definition.
 
     # LazyImportType in pure Python cannot be guaranteed
-    # overriding global filter, so there is no fallback definition.
+    # without overriding the filter, so there is no fallback definition.
 
     del sys, _f, _g, _C, _c, _ag, _cell_factory  # Not for export
 
